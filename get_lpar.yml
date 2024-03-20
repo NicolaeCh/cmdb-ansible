@@ -1,5 +1,5 @@
 ---
-# incluiido en el rol csm_info_hmc
+# included in lpar_info
 - name: Recupera las lpar - interno
   ibm.power_hmc.hmc_command:
     hmc_host: "{{ hmc_ip }}"
