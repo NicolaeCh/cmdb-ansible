@@ -1,4 +1,4 @@
-- name: creacion de tablas
+- name: create tables in sqlite
   hosts: gitlab
   gather_facts: False
   tasks:
