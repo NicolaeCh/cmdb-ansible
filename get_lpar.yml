@@ -1,0 +1,38 @@
+---
+# incluiido en el rol csm_info_hmc
+- name: Recupera las lpar - interno
+  ibm.power_hmc.hmc_command:
+    hmc_host: "{{ hmc_ip }}"
+    hmc_auth:
+         username: '{{ usuario }}'
+         password: '{{ pass_hmc }}'
+    cmd:  lssyscfg -r lpar -m "{{sys_name.split(',')[0]}}"  -F name,lpar_env,os_version, state
+  register: info_lpar
+
+- name: Insert datos de lpars
+  ibm.power_ibmi.ibmi_sqlite3:
+    database: "/home/ansible/db1/config.db"
+    sql: INSERT INTO  lpar (NOMBRELPAR,NOMBRESYS,IPHMC,TIPOLPAR,OSVERSION, STATE)
+           VALUES ("{{item.split(',')[0]}}","{{sys_name.split(',')[0]}}","{{hmc_ip}}","{{item.split(',')[1]}}", "{{item.split(',')[2]}}", "{{item.split(',')[3]}}")
+  loop: "{{info_lpar.command_output}}"
+
+- name: Recupera las lpar y wwn
+  ibm.power_hmc.hmc_command:
+    hmc_host: "{{ hmc_ip }}"
+    hmc_auth:
+         username: '{{ usuario }}'
+         password: '{{ pass_hmc }}'
+    cmd:  lshwres  -m "{{sys_name.split(',')[0]}}" --level lpar -r virtualio --rsubtype fc -F lpar_name, wwpns
+  register: info_sys_fc
+
+- name: Salva los wwnfc en lparwwn.json
+  copy:
+    content: "{{ info_sys_fc | to_nice_json }}"
+    dest: "/home/ansible/db1/lparwwn.json"
+
+- name: Transforma lparwwn.json to lparwwn.csv
+  shell:  jq -r '.command_output[]| sub("\"";"")|split(",")| {a:.[0], b:.[1]}| [ .a, .b] | @csv '
+          /home/ansible/db1/lparwwn.json >/home/ansible/db1/lparwwn.csv
+          
+- name: import lparwwn.csv to lparwwn
+  shell: sqlite3 /home/ansible/db1/config.db ".import /home/ansible/db1/lparwwn.csv lparwwn --csv"

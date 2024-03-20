@@ -1,0 +1,54 @@
+---
+- name: RECUPERA HMC
+  ibm.power_ibmi.ibmi_sqlite3:
+    database: "/home/ansible/db1/config.db"
+    sql: SELECT NOMBREHMC, IPHMC, CPD_HMC  FROM infohmc
+  register: hmcs
+
+- name: inserta ip hmc en una variable
+  set_fact:
+    hmc_ip:  "{{hmcs.rows[0].1}}"
+
+- name: Retrieve Power hosts from HMC
+  ibm.power_hmc.hmc_command:
+    hmc_host: "{{ hmc_ip }}"
+    hmc_auth:
+         username: '{{ usuario }}'
+         password: '{{ pass_hmc }}'
+    cmd:  lssyscfg -r sys -F name,state 
+  register: info_sys
+
+- name: los servidores definidos en la HMC
+  debug: 
+    var: info_sys
+
+- name: Remove data from lpar table
+  ibm.power_ibmi.ibmi_sqlite3:
+    database: "/home/ansible/db1/config.db"
+    sql: DELETE FROM lpar
+
+- name: Rewmove data from  lparwwn table
+  ibm.power_ibmi.ibmi_sqlite3:
+    database: "/home/ansible/db1/config.db"
+    sql: DELETE FROM lparwwn
+
+
+- name: Retrive lpar by system
+  include_tasks: get_lpar.yml
+  loop: "{{info_sys.command_output}}"
+  when: sys_name.split(',')[1]=="Operating"
+  loop_control:
+    loop_var: sys_name
+
+
+- name: cambia el estado  lpar de running a active
+  ibm.power_ibmi.ibmi_sqlite3:
+    database: "/home/ansible/db1/config.db"
+    sql: UPDATE  lpar SET STATE = 'active' WHERE STATE ='Running'
+
+- name: cambia el estado  lpar de not activated a offline
+  ibm.power_ibmi.ibmi_sqlite3:
+    database: "/home/ansible/db1/config.db"
+    sql: UPDATE  lpar SET STATE = 'offline' WHERE STATE ='Not Activated'
+
+

@@ -1,0 +1,104 @@
+- name: Hosts cabinas
+  hosts: gitlab
+  vars: 
+    usuario: ansible
+  gather_facts:  False
+  
+  tasks:
+  
+  - name: RECUPERA CABINAS
+    ibm.power_ibmi.ibmi_sqlite3:
+      database: "/home/ansible/db1/config.db"
+      sql: SELECT NOMBRECABINA, IPCABINA  FROM infocabinas
+    register: cabinas
+
+  # Informacion de host de la cabina
+  - name: Get host info
+    ibm.storage_virtualize.ibm_svc_info:
+      clustername: "{{item.1}}"
+      username: "{{usuario}}"
+      password: "{{pass}}"
+      gather_subset: host
+    register: info_host
+    loop: "{{cabinas.rows}}"
+
+  - name: info recuperada host
+    debug: 
+      var: info_host
+
+  - name: Bora datos de hostinfo
+    ibm.power_ibmi.ibmi_sqlite3:
+      database: "/home/ansible/db1/config.db"
+      sql: DELETE FROM hostinfo
+
+  - name: crea sqlstm3 variable
+    set_fact:
+      sqlstm3:  'INSERT INTO  hostinfo (NOMBREHOST,NOMBRECABINA,IPCABINA,ESTADO_HOST) VALUES'
+
+  - name: inserta hostinfo en  sqlstm3 variable
+    set_fact:
+      sqlstm3:  "{{sqlstm3}}  (\"{{item.1.name }}\" , \"{{item.0.item.0}}\" , \"{{item.0.item.1}}\" , \"{{item.1.status}}\") ,"
+    loop: "{{info_host.results|subelements('Host')}}"
+    loop_control:
+      label: "{{item.0.item.0}}, {{ item.1.name }}"
+
+  - name:  sqlstm3 variable
+    set_fact:
+      sqlstm3: "{{sqlstm3[:-1]}}"
+      
+  - name: Insert datos de hostinfo
+    ibm.power_ibmi.ibmi_sqlite3:
+      database: "/home/ansible/db1/config.db"
+      sql: "{{sqlstm3}}"
+
+
+
+
+  - name: rellena nombre ibmi en hostinfo
+    ibm.power_ibmi.ibmi_sqlite3:
+      database: "/home/ansible/db1/config.db"
+      sql:    UPDATE hostinfo set NOMBREIBMI=(SELECT NOMBREIBMI FROM lpar 
+              WHERE (substr(hostinfo.NOMBREHOST,1,12)=substr(lpar.NOMBRELPAR,1,12) AND  (length(NOMBRELPAR)=12)))
+
+# Informacion de wwn host de la cabina
+
+  - name: Bora datos de hostwwn
+    ibm.power_ibmi.ibmi_sqlite3:
+      database: "/home/ansible/db1/config.db"
+      sql: DELETE FROM hostwwn
+
+  - name: RECUPERA host cabinas
+    ibm.power_ibmi.ibmi_sqlite3:
+      database: "/home/ansible/db1/config.db"
+      sql: SELECT NOMBREHOST, IPCABINA  FROM hostinfo
+    register: hostcabinas
+
+  # Informacion de host de la cabina
+  - name: Get host info
+    ibm.storage_virtualize.ibm_svc_info:
+      clustername: "{{item.1}}"
+      username: "{{usuario}}"
+      password: "{{pass}}"
+      objectname: "{{item.0}}"
+      gather_subset: host
+    register: info_host_fc
+    loop: "{{hostcabinas.rows}}"
+
+
+  - name: Salva los fc en hostwwn.json
+    copy:
+      content: "{{ info_host_fc | to_nice_json }}"
+      dest: "/home/ansible/db1/hostwwn.json"
+
+  - name: Transforma hostwwn.json to hostwwn.csv
+    shell:  jq -r '.results[]| .item[1] as $ipcabina|.Host |.name as $nombrehost|.nodes| .[]| {a:$nombrehost, b:.WWPN, c:.state, d:$ipcabina}| [ .a, .b, .c, .d] |@csv ' 
+            /home/ansible/db1/hostwwn.json >/home/ansible/db1/hostwwn.csv
+
+  - name: import hostwwn.csv to hostwwn
+    shell: sqlite3 /home/ansible/db1/config.db ".import /home/ansible/db1/hostwwn.csv hostwwn --csv"
+
+  - name: rellena hostwwn nombre cabina
+    ibm.power_ibmi.ibmi_sqlite3:
+      database: "/home/ansible/db1/config.db"
+      sql: UPDATE hostwwn SET NOMBRECABINA=
+                            (SELECT NOMBRECABINA  FROM  infocabinas WHERE hostwwn.IPCABINA=infocabinas.IPCABINA LIMIT 1)

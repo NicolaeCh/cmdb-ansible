@@ -1,0 +1,220 @@
+- name: creacion de tablas
+  hosts: gitlab
+  gather_facts: False
+  tasks:
+  - name: crea directorio para base de datos
+    file:
+      path: /home/ansible/db1
+      state: directory
+      mode: '0777'
+  - name: Create lpar table
+    ibm.power_ibmi.ibmi_sqlite3:
+      database: "/home/ansible/db1/config.db"
+      sql: "CREATE TABLE IF NOT EXISTS  lpar  (NOMBRELPAR CHAR(60) NOT NULL, 
+            NOMBRESYS CHAR(40) NOT NULL,
+            IPHMC CHAR(15) NOT NULL,
+            NOMBREIBMI CHAR(8),
+            TIPOLPAR CHAR(10),
+            OSVERSION CHAR(80),
+            STATE CHAR(20),
+            UNIQUE(NOMBRELPAR,NOMBRESYS) )" 
+
+  - name: Create table hostinfo
+    ibm.power_ibmi.ibmi_sqlite3:
+      database: "/home/ansible/db1/config.db"
+      sql: "CREATE TABLE IF NOT EXISTS  hostinfo  (NOMBREHOST CHAR(60) NOT NULL, 
+            NOMBRECABINA CHAR(40) NOT NULL,
+            IPCABINA CHAR(15) NOT NULL,
+            NOMBREIBMI CHAR(8),
+            ESTADO_HOST CHAR(10)  )"   
+
+
+  - name: Create table vdiskmap
+    ibm.power_ibmi.ibmi_sqlite3:
+      database: "/home/ansible/db1/config.db"
+      sql: "CREATE TABLE IF NOT EXISTS  vdiskmap  (NOMBREHOST CHAR(60) NOT NULL, 
+            NOMBREVDISK CHAR(60) NOT NULL,
+            NOMBRECABINA CHAR(40),
+            IPCABINA CHAR(15) NOT NULL,
+            ESTADO_HOST CHAR(10) )"  
+
+  - name: Create table rcrelation
+    ibm.power_ibmi.ibmi_sqlite3:
+      database: "/home/ansible/db1/config.db"
+      sql: "CREATE TABLE IF NOT EXISTS  rcrelation  (NOMBREREL CHAR(40) NOT NULL, 
+            MASTERSTG CHAR(40) NOT NULL,
+            AUXSTG CHAR(40) NOT NULL,
+            MASTERVDISK CHAR(60) NOT NULL,
+            AUXVDISK CHAR(60) NOT NULL,
+            PRIMARIO CHAR(20) ,
+            RCGROUP CHAR(20) ,
+            CURPRIMSTG CHAR(40),
+            CURPRIMVDISK CHAR(60),
+            CURPRIMHOST CHAR(60),
+            CURAUXSTG CHAR(40),
+            CURAUXVDISK CHAR(60),
+            CURAUXHOST CHAR(60),
+            UNIQUE(NOMBREREL,MASTERSTG) )"  
+
+  - name: Create table rcgroup
+    ibm.power_ibmi.ibmi_sqlite3:
+      database: "/home/ansible/db1/config.db"
+      sql: "CREATE TABLE IF NOT EXISTS  rcgroup  (RCGROUP CHAR(20) NOT NULL,
+            MASTERSTG CHAR(40) NOT NULL,
+            AUXSTG CHAR(40) NOT NULL,
+            PRIMARIO CHAR(20) ,
+            CURPRIMSTG CHAR(40),
+            UNIQUE(RCGROUP) )"
+
+
+  - name: Create table fcmap
+    ibm.power_ibmi.ibmi_sqlite3:
+      database: "/home/ansible/db1/config.db"
+      sql: "CREATE TABLE IF NOT EXISTS  fcmap  (NOMBREMAP CHAR(40) NOT NULL, 
+            SOURCEVDISK CHAR(60) NOT NULL,
+            DESTVDISK CHAR(60) NOT NULL,
+            FCGROUP CHAR(30), 
+            NOMBRECABINA CHAR(40),
+            IPCABINA CHAR(15) NOT NULL,
+            INCREMENTAL CHAR(5),
+            SOURCEHOST CHAR(60),
+            DESTHOST CHAR(60)
+            )"   
+
+  - name: Create table fcgroup
+    ibm.power_ibmi.ibmi_sqlite3:
+      database: "/home/ansible/db1/config.db"
+      sql: "CREATE TABLE IF NOT EXISTS  fcgroup  (NOMBREGROUP CHAR(40) NOT NULL, 
+            ESTADO CHAR(30) NOT NULL,
+            HORASTART CHAR(20)
+            )"   
+
+
+  - name: Create table geninfo
+    ibm.power_ibmi.ibmi_sqlite3:
+      database: "/home/ansible/db1/config.db"
+      sql: "CREATE TABLE IF NOT EXISTS  geninfo (
+            NOMBREIBMI CHAR(8),
+            NOMBRELPAR CHAR(60) NOT NULL, 
+            NOMBRESYS CHAR(40) NOT NULL,
+            IPHMC CHAR(15) NOT NULL,
+            IPIBMI CHAR(15),
+            NOMBRECABINA CHAR(40),
+            IPCABINA CHAR(15),
+            NOMBREHOST CHAR(60),
+            FCCOPYIBMI CHAR(8),
+            FCCOPYLPAR CHAR(60), 
+            FCCOPYIP CHAR(15),
+            FCCOPYCG CHAR(40),
+            FCCLONIBMI CHAR(8),
+            FCCLONLPAR CHAR(60), 
+            FCCLONIP CHAR(15),
+            FCCLONCG CHAR(40),
+            UNIQUE(NOMBRELPAR,NOMBRESYS) )" 
+  - name: Create table ipibmi
+    ibm.power_ibmi.ibmi_sqlite3:
+      database: "/home/ansible/db1/config.db"
+      sql: "CREATE TABLE IF NOT EXISTS ipibmi (
+            NOMBREIBMI CHAR(8) NOT NULL,
+            IPIBMI CHAR(15),
+            DFTROUTE CHAR(15),
+            UNIQUE(NOMBREIBMI))"   
+
+  - name: Create table infocabinas
+    ibm.power_ibmi.ibmi_sqlite3:
+      database: "/home/ansible/db1/config.db"
+      sql: "CREATE TABLE IF NOT EXISTS infocabinas (
+            NOMBRECABINA CHAR(40),
+            IPCABINA CHAR(15),
+            CPD CHAR(3),
+            UNIQUE(NOMBRECABINA,CPD))"   
+
+  - name: Create table temporal fc consitency group fcgrouptmp
+    ibm.power_ibmi.ibmi_sqlite3:
+      database: "/home/ansible/db1/config.db"
+      sql: "CREATE TABLE IF NOT EXISTS fcgrouptmp  (
+            NOMBREGROUP CHAR(40) NOT NULL, 
+            ESTADO CHAR(30) NOT NULL, 
+            HORASTART CHAR(20))"   
+
+  - name: Create table temporal vdisk val vdisktmp
+    ibm.power_ibmi.ibmi_sqlite3:
+      database: "/home/ansible/db1/config.db"
+      sql: "CREATE TABLE IF NOT EXISTS vdisktmp  (
+            NOMBREVDISK CHAR(50) NOT NULL, 
+            NOMBREIOGROUP CHAR(30) NOT NULL, 
+            NOMBREMDISK CHAR(20) NOT NULL,
+            CAPACIDAD CHAR(10) NOT NULL,
+            UNIDAD CHAR(5) NOT NULL
+            )"
+
+  - name: Create table lista snapshots PowerVC
+    ibm.power_ibmi.ibmi_sqlite3:
+      database: "/home/ansible/db1/config.db"
+      sql: "CREATE TABLE IF NOT EXISTS pvcsnapshots  (
+            NOMBRELPAR CHAR(50) NOT NULL, 
+            NOMBRESNAPSHOT CHAR(70) NOT NULL, 
+            FECHASNAPSHOT CHAR(10),
+            DIASOLD CHAR(3))"  
+
+
+  - name: Create table rclpar
+    ibm.power_ibmi.ibmi_sqlite3:
+      database: "/home/ansible/db1/config.db"
+      sql: "CREATE TABLE IF NOT EXISTS  rclpar  (RCGROUP CHAR(20) NOT NULL, 
+            PRIMARY_STG CHAR(40) NOT NULL,
+            PRIMARY_IP_STG CHAR(15),
+            AUX_STG CHAR(40) NOT NULL,
+            AUX_IP_STG CHAR(15),
+            NR_REL CHAR(3) NOT NULL,
+            PRIMARY_HOST_STG CHAR(40),
+            PRIMARY_LPAR CHAR(40),
+            PRIMARY_NOMBRESYS CHAR(40),
+            AUX_HOST_STG CHAR(40),
+            AUX_LPAR CHAR(40),
+            AUX_NOMBRESYS CHAR(40),
+            IPHMC CHAR(15),
+            UNIQUE(RCGROUP,PRIMARY_STG) )"  
+
+
+  - name: Create table host wwnn 
+    ibm.power_ibmi.ibmi_sqlite3:
+      database: "/home/ansible/db1/config.db"
+      sql: "CREATE TABLE IF NOT EXISTS hostwwn  (
+            NOMBREHOST CHAR(60) NOT NULL, 
+            HOSTWWNN CHAR(25) NOT NULL, 
+            ESTADO CHAR(20),
+            IPCABINA CHAR(15),
+            NOMBRECABINA CHAR(40),
+            UNIQUE(NOMBREHOST,HOSTWWNN) ON CONFLICT IGNORE)" 
+
+  - name: Create table lparwwn
+    ibm.power_ibmi.ibmi_sqlite3:
+      database: "/home/ansible/db1/config.db"
+      sql: "CREATE TABLE IF NOT EXISTS  lparwwn  (
+            NOMBRELPAR CHAR(60) NOT NULL,
+            LPARWWNN CHAR(25) NOT NULL,
+            UNIQUE(NOMBRELPAR,LPARWWNN) ON CONFLICT IGNORE)"
+
+  - name: Create table hostlparwwn
+    ibm.power_ibmi.ibmi_sqlite3:
+      database: "/home/ansible/db1/config.db"
+      sql: "CREATE TABLE IF NOT EXISTS hostlparwwn (
+            NOMBREHOST CHAR(60) NOT NULL, 
+            NOMBRELPAR CHAR(60) ,
+            HOSTWWNN CHAR(25) , 
+            LPARWWNN CHAR(25) ,
+            ESTADO CHAR(20),
+            IPCABINA CHAR(15),
+            NOMBRESYS CHAR(40) ,
+            IPHMC CHAR(15) ,
+            TIPOLPAR CHAR(10))" 
+
+  - name: Create table infohmc
+    ibm.power_ibmi.ibmi_sqlite3:
+      database: "/home/ansible/db1/config.db"
+      sql: "CREATE TABLE IF NOT EXISTS infohmc (
+            NOMBREHMC CHAR(40),
+            IPHMC CHAR(15),
+            CPD_HMC CHAR(3),
+            UNIQUE(NOMBREHMC,CPD_HMC))"  
